@@ -1,7 +1,6 @@
 import csv
 from gtts import gTTS
 from pydub import AudioSegment
-from pydub.playback import play
 import os
 
 def create_audiobook(csv_file, output_file, pause_duration=1000):
@@ -25,14 +24,14 @@ def create_audiobook(csv_file, output_file, pause_duration=1000):
     audiobook = AudioSegment.silent(duration=0)
 
     for term, definition in vocabulary:
-        # Generate audio for term
+        # Generate audio for term in English
         term_audio = gTTS(text=term, lang='en')
         term_audio_file = "term.mp3"
         term_audio.save(term_audio_file)
         term_segment = AudioSegment.from_file(term_audio_file)
 
-        # Generate audio for definition
-        definition_audio = gTTS(text=definition, lang='en')
+        # Generate audio for definition in German
+        definition_audio = gTTS(text=definition, lang='de')
         definition_audio_file = "definition.mp3"
         definition_audio.save(definition_audio_file)
         definition_segment = AudioSegment.from_file(definition_audio_file)
