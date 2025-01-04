@@ -6,10 +6,9 @@ import click
 
 @click.command()
 @click.argument('filename', type=click.Path(exists=True))
-@click.argument('output_file', type=click.Path())
 @click.option('--max-per-track', default=0, type=int, help='Maximum number of tracks before the ouput file will be splitted.')
 @click.option('--pause-duration', default=1000, type=int, help='Duration of pause between sections in milliseconds.')
-def main(filename, output_file, max_per_track, pause_duration):
+def main(filename: str, max_per_track: int, pause_duration: int):
     """
     Creates an audiobook from an Anki vocabulary CSV file.
     """
@@ -20,6 +19,10 @@ def main(filename, output_file, max_per_track, pause_duration):
         for row in reader:
             if len(row) >= 2:  # Ensure each row has at least two columns
                 vocabulary.append((row[0].strip(), row[1].strip()))
+
+    # Get base name for output file(s)
+    basename, _ = os.path.splitext(filename)
+    output_file = f"{basename}.mp3"
 
     # Initialize the audiobook
     audiobook = AudioSegment.silent(duration=0)
@@ -51,11 +54,11 @@ def main(filename, output_file, max_per_track, pause_duration):
         # Split file if necessary
         if max_per_track == 0 or idx == 0 or idx % max_per_track != 0:
             continue
-        output_file = f"out_{part:03d}.mp3"
+        output_file = f"{basename}_{part:03d}.mp3"
         part += 1
         audiobook.export(output_file, format="mp3")
         audiobook = AudioSegment.silent(duration=0)
-        output_file = f"out_{part:03d}.mp3"
+        output_file = f"{basename}_{part:03d}.mp3"
 
     # Export the final audiobook
     audiobook.export(output_file, format="mp3")
