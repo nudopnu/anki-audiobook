@@ -2,19 +2,20 @@ import csv
 from gtts import gTTS
 from pydub import AudioSegment
 import os
+import click
 
-def create_audiobook(csv_file, output_file, pause_duration=1000):
+@click.command()
+@click.argument('filename', type=click.Path(exists=True))
+@click.argument('output_file', type=click.Path())
+@click.option('--max-per-track', default=0, type=int, help='Maximum number of tracks before the ouput file will be splitted.')
+@click.option('--pause-duration', default=1000, type=int, help='Duration of pause between sections in milliseconds.')
+def main(filename, output_file, max_per_track, pause_duration):
     """
     Creates an audiobook from an Anki vocabulary CSV file.
-
-    Parameters:
-        csv_file (str): Path to the CSV file with vocabulary.
-        output_file (str): Path to save the audiobook.
-        pause_duration (int): Pause duration between items in milliseconds.
     """
     # Load vocabulary from CSV
     vocabulary = []
-    with open(csv_file, 'r', encoding='utf-8') as file:
+    with open(filename, 'r', encoding='utf-8') as file:
         reader = csv.reader(file, delimiter="\t")
         for row in reader:
             if len(row) >= 2:  # Ensure each row has at least two columns
@@ -22,8 +23,9 @@ def create_audiobook(csv_file, output_file, pause_duration=1000):
 
     # Initialize the audiobook
     audiobook = AudioSegment.silent(duration=0)
+    part = 1
 
-    for term, definition in vocabulary:
+    for idx, (term, definition) in enumerate(vocabulary):
         # Generate audio for term in English
         term_audio = gTTS(text=term, lang='en')
         term_audio_file = "term.mp3"
@@ -40,16 +42,24 @@ def create_audiobook(csv_file, output_file, pause_duration=1000):
         audiobook += term_segment
         audiobook += AudioSegment.silent(duration=pause_duration)
         audiobook += definition_segment
-        audiobook += AudioSegment.silent(duration=pause_duration * 2)  # Longer pause between items
+        audiobook += AudioSegment.silent(duration=pause_duration)
 
         # Clean up temporary files
         os.remove(term_audio_file)
         os.remove(definition_audio_file)
 
+        # Split file if necessary
+        if max_per_track == 0 or idx == 0 or idx % max_per_track != 0:
+            continue
+        output_file = f"out_{part:03d}.mp3"
+        part += 1
+        audiobook.export(output_file, format="mp3")
+        audiobook = AudioSegment.silent(duration=0)
+        output_file = f"out_{part:03d}.mp3"
+
     # Export the final audiobook
     audiobook.export(output_file, format="mp3")
     print(f"Audiobook saved to {output_file}")
 
-# Example usage
-# Provide the path to your Anki CSV file and the desired output file path.
-create_audiobook("anki_vocabulary.csv", "anki_audiobook.mp3")
+if __name__ == "__main__":
+    main()
