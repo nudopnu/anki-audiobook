@@ -3,14 +3,17 @@ from gtts import gTTS
 from pydub import AudioSegment
 import os
 import click
+import random
 
 @click.command()
 @click.argument('filename', type=click.Path(exists=True))
-@click.option('--max-per-track', default=0, type=int, help='Maximum number of tracks before the ouput file will be splitted.')
-@click.option('--pause-duration', default=1000, type=int, help='Duration of pause between sections in milliseconds.')
-def main(filename: str, max_per_track: int, pause_duration: int):
+@click.option('-m', '--max-per-track', default=0, type=int, show_default=True, help='Maximum number of rows before the ouput file will be splitted. 0 disables splitting.')
+@click.option('-p', '--pause-duration', default=1000, type=int, show_default=True, help='Duration of pause between sections in milliseconds.')
+@click.option('-d', '--direction', default='a', type=click.Choice(['a', 'b', 'r'], case_sensitive=False), show_default=True, help='Direction (a) left-to-right, (b) right-to-left, (r) random ')
+@click.option('-s', '--shuffle', default=False, type=bool, is_flag=True, show_default=True, help='Shuffle rows')
+def main(filename: str, max_per_track: int, pause_duration: int, direction: str, shuffle: bool):
     """
-    Creates an audiobook from an Anki vocabulary CSV file.
+    Creates an MP3 audiobook from an Anki vocabulary CSV file.
     """
     # Load vocabulary from CSV
     vocabulary = []
@@ -19,6 +22,10 @@ def main(filename: str, max_per_track: int, pause_duration: int):
         for row in reader:
             if len(row) >= 2:  # Ensure each row has at least two columns
                 vocabulary.append((row[0].strip(), row[1].strip()))
+    
+    # Optionally shuffle the vocabulary
+    if shuffle:
+        random.shuffle(vocabulary)
 
     # Get base name for output file(s)
     basename, _ = os.path.splitext(filename)
@@ -40,6 +47,10 @@ def main(filename: str, max_per_track: int, pause_duration: int):
         definition_audio_file = "definition.mp3"
         definition_audio.save(definition_audio_file)
         definition_segment = AudioSegment.from_file(definition_audio_file)
+
+        # Optionally switch term and definition
+        if direction == 'b' or direction == 'r' and random.random() > 0.5:
+            term_segment, definition_segment = definition_segment, term_segment
 
         # Add term, pause, and definition to the audiobook
         audiobook += term_segment
